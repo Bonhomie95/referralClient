@@ -6,46 +6,49 @@ const ChangePassword = () => {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const token = searchParams.get('token');
+
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState('');
   const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (password !== confirmPassword) {
+
+    if (password.trim() !== confirmPassword.trim()) {
       setStatus('Passwords do not match.');
       setIsError(true);
       return;
     }
+
     try {
+      setLoading(true);
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/change-password`,
         {
           token,
-          password,
+          password: password.trim(),
         }
       );
-      setStatus('Password changed successfully! Redirecting to login...');
+      setStatus('Password changed successfully! Redirecting...');
       setIsError(false);
-      setTimeout(() => {
-        navigate('/'); // Redirect to login page or landing page
-      }, 1500);
+      setTimeout(() => navigate('/'), 1500);
     } catch (error) {
       const errMsg =
-        (error.response &&
-          error.response.data &&
-          error.response.data.message) ||
+        error.response?.data?.message ||
         error.message ||
-        'Password change failed';
+        'Password reset failed';
       setStatus(errMsg);
       setIsError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-900 text-white px-4">
-      <div className="bg-gray-800 p-8 rounded shadow-lg w-full max-w-md transform transition duration-300 ease-in-out">
+      <div className="bg-gray-800 p-8 rounded shadow-lg w-full max-w-md">
         <h2 className="text-2xl mb-4 text-center">Change Password</h2>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
@@ -55,11 +58,10 @@ const ChangePassword = () => {
             <input
               type="password"
               id="password"
-              name="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
+              className="w-full p-2 bg-gray-700 border border-gray-600 rounded"
             />
           </div>
           <div>
@@ -69,18 +71,18 @@ const ChangePassword = () => {
             <input
               type="password"
               id="confirmPassword"
-              name="confirmPassword"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
               required
-              className="w-full p-2 rounded bg-gray-700 border border-gray-600"
+              className="w-full p-2 bg-gray-700 border border-gray-600 rounded"
             />
           </div>
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded disabled:bg-gray-600"
           >
-            Change Password
+            {loading ? 'Processing...' : 'Change Password'}
           </button>
         </form>
         {status && (

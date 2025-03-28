@@ -20,26 +20,25 @@ const PaymentPage = () => {
     setError('');
     try {
       const token = localStorage.getItem('token');
-      const email = localStorage.getItem('userEmail'); // Ensure you store userEmail during login
-      const amount = plan.price; // amount in NGN
+      const email = localStorage.getItem('userEmail');
+      const amount = plan.price;
+      const planId = plan.id;
+
       const response = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/payment/initialize`,
         {
+          planId,
           email,
           amount,
           callback_url: `${window.location.origin}/payment/callback`,
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
-      // The response from Paystack includes an authorization_url to which we redirect the user
+
       const { authorization_url } = response.data.data;
       window.location.href = authorization_url;
     } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Payment initialization failed'
-      );
+      setError(err.response?.data?.message || 'Payment initialization failed');
       setLoading(false);
     }
   };
@@ -56,22 +55,13 @@ const PaymentPage = () => {
           <p>
             <strong>Amount to Pay:</strong> {plan?.price} NGN
           </p>
-          <p>
-            <strong>Bank Name:</strong> XYZ Bank
-          </p>
-          <p>
-            <strong>Account Number:</strong> 1234567890
-          </p>
-          <p>
-            <strong>Account Name:</strong> Investment Platform
-          </p>
         </div>
         <button
           onClick={handlePayNow}
           disabled={loading}
           className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
         >
-          {loading ? 'Processing...' : 'Pay Now'}
+          {loading ? 'Processing...' : 'Pay Now with Paystack'}
         </button>
         <button
           onClick={() => navigate('/dashboard/home')}

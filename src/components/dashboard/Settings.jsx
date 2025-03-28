@@ -5,20 +5,25 @@ import ConfirmationModal from '../ConfirmationModal';
 const Settings = () => {
   const [profile, setProfile] = useState(null);
   const [twoFAEnabled, setTwoFAEnabled] = useState(false);
-  const [toggleAttempt, setToggleAttempt] = useState(null); // the desired new value (true/false)
+  const [pendingToggle2FA, setPendingToggle2FA] = useState(null);
   const [otpSent, setOtpSent] = useState(false);
   const [otpInput, setOtpInput] = useState('');
   const [notification, setNotification] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const [passwordData, setPasswordData] = useState({
     newPassword: '',
     confirmPassword: '',
+    code: '',
+    twoFACode: '',
   });
+  const [step, setStep] = useState('request');
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deletionCode, setDeletionCode] = useState('');
+  const [requireCodeInput, setRequireCodeInput] = useState(false);
 
-  // Assume token is stored in localStorage and auth middleware sets req.user on backend.
   const token = localStorage.getItem('token');
 
-  // Fetch profile from backend
   useEffect(() => {
     axios
       .get(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
@@ -31,84 +36,164 @@ const Settings = () => {
       .catch((err) => console.error('Error fetching profile:', err));
   }, [token]);
 
-  // 2FA Toggle: when user clicks toggle, we ask for confirmation by sending an OTP to email.
   const handleToggle2FA = (desiredState) => {
-    setOtpInput("");
-    setToggleAttempt(desiredState);
-    // Send code to user's email
+    setOtpInput('');
+    setPendingToggle2FA(desiredState);
+    setIsLoading(true);
     axios
       .post(
         `${import.meta.env.VITE_API_URL}/api/user/send-2fa-code`,
         { enable: desiredState },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      .then((res) => {
+      .then(() => {
         setOtpSent(true);
         setNotification('A confirmation code has been sent to your email.');
-        console.log(res?.data);
+        autoClearNotification();
       })
       .catch((err) => {
         console.error('Error sending 2FA code:', err);
         setNotification('Failed to send confirmation code.');
-      });
+        autoClearNotification();
+      })
+      .finally(() => setIsLoading(false));
   };
 
   const handleVerify2FA = () => {
+    setIsLoading(true);
     axios
       .post(
         `${import.meta.env.VITE_API_URL}/api/user/update-2fa`,
-        { code: otpInput, enable: toggleAttempt },
+        { code: otpInput, enable: pendingToggle2FA },
         { headers: { Authorization: `Bearer ${token}` } }
       )
-      .then((res) => {
-        setTwoFAEnabled(toggleAttempt);
+      .then(() => {
+        setTwoFAEnabled(pendingToggle2FA);
         setNotification('2FA status updated successfully.');
         setOtpSent(false);
         setOtpInput('');
-        console.log(res?.data);
+        autoClearNotification();
       })
       .catch((err) => {
         console.error('Error updating 2FA:', err);
         setNotification(err.response?.data?.message || 'Failed to update 2FA.');
-      });
+        autoClearNotification();
+      })
+      .finally(() => setIsLoading(false));
   };
 
-  // Update password form
   const handlePasswordChange = (e) => {
     setPasswordData({ ...passwordData, [e.target.name]: e.target.value });
   };
 
-  const handleUpdatePassword = (e) => {
-    e.preventDefault();
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      setNotification('Passwords do not match.');
-      return;
+  const requestResetCode = async () => {
+    setIsLoading(true);
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/user/send-reset-code`,
+        {},
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setStep('verify');
+      setNotification('Code sent successfully.');
+      autoClearNotification();
+      const profile = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/user/profile`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      setTwoFactorEnabled(profile.data.twoFactorEnabled);
+    } catch (err) {
+      setNotification(err.response?.data?.message || 'Error sending code');
     }
-    axios
-      .post(
-        `${import.meta.env.VITE_API_URL}/api/user/update-password`,
-        { newPassword: passwordData.newPassword },
-        { headers: { Authorization: `Bearer ${token}` } }
-      )
-      .then((res) => {
-        setNotification('Password updated successfully.');
-        setPasswordData({ newPassword: '', confirmPassword: '' });
-        console.log(res?.data);
-      })
-      .catch((err) => {
-        console.error('Error updating password:', err);
-        setNotification(
-          err.response?.data?.message || 'Failed to update password.'
-        );
-      });
   };
 
-  // Delete profile
+  const handleUpdatePassword = async (e) => {
+    e.preventDefault();
+    const { newPassword, confirmPassword, code } = passwordData;
+
+    if (newPassword !== confirmPassword) {
+      setNotification('Passwords do not match.');
+      return autoClearNotification();
+    }
+
+    if (twoFAEnabled && step === 'verify' && !code) {
+      setNotification('Verification code is required.');
+      return autoClearNotification();
+    }
+
+    setIsLoading(true);
+
+    try {
+      await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/user/update-password`,
+        {
+          newPassword,
+          code: twoFAEnabled ? code : undefined, // only send code if 2FA is enabled
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      setNotification('Password updated successfully.');
+      setPasswordData({
+        newPassword: '',
+        confirmPassword: '',
+        code: '',
+      });
+      setStep('request'); // reset step back to request
+    } catch (err) {
+      console.error('Error updating password:', err);
+      setNotification(
+        err.response?.data?.message || 'Failed to update password.'
+      );
+    } finally {
+      autoClearNotification();
+      setIsLoading(false);
+    }
+  };
+
+  const confirmDeleteRequest = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(
+        `${import.meta.env.VITE_API_URL}/api/user/profile`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      if (res.data.twoFAEnabled) {
+        await axios.post(
+          `${import.meta.env.VITE_API_URL}/api/user/send-delete-code`,
+          {},
+          { headers: { Authorization: `Bearer ${token}` } }
+        );
+        setRequireCodeInput(true);
+        setNotification('Verification code sent to your email.');
+      } else {
+        handleDeleteProfile(); // direct deletion
+      }
+    } catch (err) {
+      setNotification(
+        err.response?.data?.message || 'Error verifying delete step.'
+      );
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleDeleteProfile = async () => {
     try {
       await axios.delete(
         `${import.meta.env.VITE_API_URL}/api/user/delete-profile`,
         {
+          data: { code: deletionCode }, // added conditionally
           headers: { Authorization: `Bearer ${token}` },
         }
       );
@@ -117,29 +202,34 @@ const Settings = () => {
         localStorage.removeItem('token');
         window.location.href = '/';
       }, 1500);
-    } catch (error) {
-      console.error('Error deleting profile:', error);
+    } catch (err) {
       setNotification(
-        error.response?.data?.message || 'Failed to delete profile.'
+        err.response?.data?.message || 'Failed to delete profile.'
       );
     }
   };
 
-  if (!profile) return <p>Loading profile...</p>;
+  const autoClearNotification = () => {
+    setTimeout(() => setNotification(''), 4000);
+  };
+
+  if (!profile) return <p className="text-white p-8">Loading Settings...</p>;
 
   return (
     <div className="max-w-2xl mx-auto p-6 bg-gray-800 rounded-lg shadow-md text-white">
       <h2 className="text-2xl font-bold mb-4">Settings</h2>
 
-      {/* 2FA Toggle */}
       <div className="mb-6">
         <h3 className="text-xl font-semibold mb-2">
           Two-Factor Authentication
         </h3>
-        <p>Current status: {twoFAEnabled ? 'Enabled' : 'Disabled'}</p>
+        <p className="flex items-center gap-2">
+          Status: {twoFAEnabled ? 'Enabled ✅' : 'Disabled 🔓'}
+        </p>
         <button
           onClick={() => handleToggle2FA(!twoFAEnabled)}
-          className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded"
+          className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
+          disabled={isLoading}
         >
           {twoFAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
         </button>
@@ -154,51 +244,113 @@ const Settings = () => {
             />
             <button
               onClick={handleVerify2FA}
-              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded"
+              className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded disabled:opacity-50"
+              disabled={isLoading}
             >
-              Confirm
+              {isLoading ? 'Processing...' : 'Confirm'}
             </button>
           </div>
         )}
       </div>
 
-      {/* Update Password */}
       <div className="mb-6">
         <h3 className="text-xl font-semibold mb-2">Update Password</h3>
-        <form onSubmit={handleUpdatePassword} className="space-y-2">
-          <input
-            type="password"
-            name="newPassword"
-            placeholder="New Password"
-            value={passwordData.newPassword}
-            onChange={handlePasswordChange}
-            className="w-full p-2 bg-gray-700 rounded"
-            required
-          />
-          <input
-            type="password"
-            name="confirmPassword"
-            placeholder="Confirm New Password"
-            value={passwordData.confirmPassword}
-            onChange={handlePasswordChange}
-            className="w-full p-2 bg-gray-700 rounded"
-            required
-          />
-          <button
-            type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded"
-          >
-            Update Password
-          </button>
-        </form>
+
+        {/* 2FA Disabled Flow */}
+        {!twoFAEnabled && (
+          <form onSubmit={handleUpdatePassword} className="space-y-2">
+            <input
+              type="password"
+              name="newPassword"
+              placeholder="New Password"
+              value={passwordData.newPassword}
+              onChange={handlePasswordChange}
+              className="w-full p-2 bg-gray-700 rounded"
+              required
+            />
+            <input
+              type="password"
+              name="confirmPassword"
+              placeholder="Confirm Password"
+              value={passwordData.confirmPassword}
+              onChange={handlePasswordChange}
+              className="w-full p-2 bg-gray-700 rounded"
+              required
+            />
+            <button
+              type="submit"
+              className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+              disabled={isLoading}
+            >
+              {isLoading ? 'Updating...' : 'Update Password'}
+            </button>
+          </form>
+        )}
+
+        {/* 2FA Enabled Flow */}
+        {twoFAEnabled && (
+          <>
+            {step === 'request' && (
+              <button
+                type="submit"
+                onClick={requestResetCode}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2 rounded mb-4"
+                disabled={isLoading}
+              >
+                {isLoading
+                  ? 'Sending Verification Code to Email...'
+                  : 'Send Verification Code to Email'}
+              </button>
+            )}
+
+            {step === 'verify' && (
+              <form onSubmit={handleUpdatePassword} className="space-y-2">
+                <input
+                  type="text"
+                  name="code"
+                  placeholder="Verification Code"
+                  value={passwordData.code}
+                  onChange={handlePasswordChange}
+                  className="w-full p-2 bg-gray-700 rounded"
+                  required
+                />
+                <input
+                  type="password"
+                  name="newPassword"
+                  placeholder="New Password"
+                  value={passwordData.newPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full p-2 bg-gray-700 rounded"
+                  required
+                />
+                <input
+                  type="password"
+                  name="confirmPassword"
+                  placeholder="Confirm Password"
+                  value={passwordData.confirmPassword}
+                  onChange={handlePasswordChange}
+                  className="w-full p-2 bg-gray-700 rounded"
+                  required
+                />
+                <button
+                  type="submit"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                  disabled={isLoading}
+                >
+                  {isLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+            )}
+          </>
+        )}
       </div>
 
-      {/* Delete Profile */}
       <div className="mb-6">
         <h3 className="text-xl font-semibold mb-2">Delete Profile</h3>
         <button
           onClick={() => setShowDeleteModal(true)}
-          className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded"
+          className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded disabled:opacity-50"
+          disabled={isLoading}
         >
           Delete Profile
         </button>
@@ -210,14 +362,33 @@ const Settings = () => {
         </p>
       )}
 
-      {/* Confirmation Modal for Delete Profile */}
       {showDeleteModal && (
-        <ConfirmationModal
-          isOpen={showDeleteModal}
-          message="Are you sure you want to delete your profile? This action cannot be undone."
-          onConfirm={handleDeleteProfile}
-          onCancel={() => setShowDeleteModal(false)}
-        />
+        <div className="p-4 bg-gray-700 rounded">
+          {!requireCodeInput ? (
+            <ConfirmationModal
+              isOpen={true}
+              message="Are you sure you want to delete your profile? This action cannot be undone."
+              onConfirm={confirmDeleteRequest}
+              onCancel={() => setShowDeleteModal(false)}
+            />
+          ) : (
+            <div>
+              <input
+                type="text"
+                value={deletionCode}
+                onChange={(e) => setDeletionCode(e.target.value)}
+                placeholder="Enter verification code"
+                className="w-full mb-2 p-2 rounded bg-gray-600 text-white"
+              />
+              <button
+                onClick={handleDeleteProfile}
+                className="bg-red-600 text-white w-full py-2 rounded"
+              >
+                Confirm Deletion
+              </button>
+            </div>
+          )}
+        </div>
       )}
     </div>
   );

@@ -5,67 +5,75 @@ function ForgotPasswordModal({ onClose, openLogin }) {
   const [email, setEmail] = useState('');
   const [status, setStatus] = useState('');
   const [isError, setIsError] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Helper to switch modals with a slight delay
   const switchModal = (modalFunc) => {
     onClose();
-    setTimeout(() => {
-      modalFunc();
-    }, 300); // 300ms delay; adjust as needed
+    setTimeout(() => modalFunc(), 300);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setLoading(true);
+    setStatus('');
     try {
-      // Call backend endpoint for forgot password
-      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/auth/forgot-password`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email }),
-      });
+      const res = await fetch(
+        `${import.meta.env.VITE_API_URL}/api/auth/forgot-password`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email }),
+        }
+      );
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.message || 'Failed to send reset link');
-      }
+      if (!res.ok) throw new Error(data.message || 'Failed to send reset link');
       setStatus('A reset link has been sent to your email.');
       setIsError(false);
     } catch (error) {
       setStatus(error.message || 'Failed to send reset link');
       setIsError(true);
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
-      {/* Dark overlay */}
-      <div className="fixed inset-0 bg-black opacity-70" onClick={onClose}></div>
-      {/* Modal content */}
-      <div className="bg-gray-800 text-white p-8 rounded shadow-lg z-10 transform transition duration-300 ease-in-out">
+      <div
+        className="fixed inset-0 bg-black opacity-70"
+        onClick={onClose}
+      ></div>
+      <div className="bg-gray-800 text-white p-8 rounded shadow-lg z-10 max-w-md w-full">
         <h2 className="text-2xl mb-4">Forgot Password</h2>
         <form onSubmit={handleSubmit}>
-          <input 
-            type="email" 
-            placeholder="Enter your email" 
+          <input
+            type="email"
+            placeholder="Enter your email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
             className="w-full p-2 mb-4 rounded bg-gray-700"
           />
-          <button 
-            type="submit" 
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded w-full"
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:bg-gray-600"
           >
-            Reset Password
+            {loading ? 'Sending...' : 'Reset Password'}
           </button>
         </form>
         {status && (
-          <p className={`mt-4 text-center text-sm ${isError ? 'text-red-500' : 'text-green-500'}`}>
+          <p
+            className={`mt-4 text-center text-sm ${
+              isError ? 'text-red-500' : 'text-green-500'
+            }`}
+          >
             {status}
           </p>
         )}
         <div className="mt-4">
-          <button 
-            onClick={() => switchModal(openLogin)} 
+          <button
+            onClick={() => switchModal(openLogin)}
             className="text-blue-400 hover:underline"
           >
             Back to Login

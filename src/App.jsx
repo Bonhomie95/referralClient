@@ -22,13 +22,18 @@ import WithdrawPage from './components/dashboard/WithdrawPage';
 import ReferralReport from './components/dashboard/ReferralReport';
 import ChangePassword from './components/ChangePassword';
 import DashboardLayout from './components/dashboard/DashboardLayout';
-import AdminLogin from './components/admin/AdminLogin';
-import AdminDashboard from './components/admin/AdminDashboard';
-import AdminUsers from './components/admin/AdminUsers';
-import AdminInvestments from './components/admin/AdminInvestments';
-import AdminReferrals from './components/admin/AdminReferrals';
-import AdminReports from './components/admin/AdminReports';
 import ConfirmationModal from './components/ConfirmationModal';
+import PaymentCallback from './components/dashboard/PaymentCallback';
+import PaymentStatus from './components/dashboard/PaymentStatus';
+import WithdrawalStatus from './components/dashboard/WithdrawalStatus';
+import AdminLayout from './components/admin/AdminLayout';
+import AdminLogin from './components/admin/AdminLogin';
+import AdminHome from './components/admin/AdminHome';
+import AdminUsers from './components/admin/AdminUsers';
+import AdminSettings from './components/admin/AdminSettings';
+import AdminProtectedRoute from './components/admin/AdminRoute';
+import Analytics from './components/admin/Analytics';
+// import UserRoute from './components/dashboard/UserRoute';
 
 function AppWrapper() {
   const [modal, setModal] = useState(null); // possible values: 'register', 'verify', 'login', 'forgot', 'confirmPlan'
@@ -102,17 +107,15 @@ function AppWrapper() {
       localStorage.removeItem('token');
       alert('Session expired. Please log in again.');
       navigate('/');
-    }, 3600000);
+    }, 360000000);
     return () => clearTimeout(timer);
   }, [navigate]);
 
   return (
     <div className="App">
       <Routes>
-        {/* Landing Page (public) */}
         <Route path="/" element={<LandingPage openModal={openModal} />} />
 
-        {/* User Dashboard Routes */}
         <Route
           path="/dashboard"
           element={
@@ -135,27 +138,22 @@ function AppWrapper() {
           <Route path="referrals" element={<ReferralReport />} />
         </Route>
 
+        {/* 👇 Add this route at the root level */}
+        <Route path="/payment/callback" element={<PaymentCallback />} />
+        <Route path="/payment-status" element={<PaymentStatus />} />
+        <Route path="/withdrawal-status" element={<WithdrawalStatus />} />
+
         <Route path="/changepassword" element={<ChangePassword />} />
 
-        {/* Admin Routes */}
         <Route path="/admin/login" element={<AdminLogin />} />
-        <Route
-          path="/admin"
-          element={
-            localStorage.getItem('adminToken') ? (
-              <AdminDashboard />
-            ) : (
-              <Navigate to="/admin/login" />
-            )
-          }
-        >
-          <Route path="users" element={<AdminUsers />} />
-          <Route path="investments" element={<AdminInvestments />} />
-          <Route path="referrals" element={<AdminReferrals />} />
-          <Route path="reports" element={<AdminReports />} />
+        <Route path="/admin" element={<AdminProtectedRoute />}>
+          <Route element={<AdminLayout />}>
+            <Route path="home" element={<AdminHome />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="settings" element={<AdminSettings />} />
+            <Route path="analytics" element={<Analytics />} />
+          </Route>
         </Route>
-
-        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
 

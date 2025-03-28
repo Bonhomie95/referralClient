@@ -1,62 +1,50 @@
-import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import axios from "axios";
+import { useState } from 'react';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const AdminLogin = () => {
-  const [form, setForm] = useState({ email: "", password: "" });
-  const [status, setStatus] = useState("");
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
   const navigate = useNavigate();
-
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/login`, form);
-      if (res.data.token) {
-        localStorage.setItem("adminToken", res.data.token);
-        navigate("/admin/users"); // Redirect to admin dashboard home (example)
-      }
-    } catch (error) {
-      const errMsg =
-        (error.response && error.response.data && error.response.data.message) ||
-        error.message ||
-        "Login failed";
-      setStatus(errMsg);
+      const res = await axios.post(`${import.meta.env.VITE_API_URL}/api/admin/login`, {
+        username,
+        password,
+      });
+      localStorage.setItem('adminToken', res.data.token);
+      navigate('/admin/home');
+    } catch (err) {
+      setError(err.response?.data?.message || 'Login failed');
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-900">
-      <div className="bg-gray-800 p-8 rounded shadow-lg w-full max-w-md text-white">
-        <h2 className="text-2xl mb-4 text-center">Admin Login</h2>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <input
-            type="email"
-            name="email"
-            placeholder="Email"
-            value={form.email}
-            onChange={handleChange}
-            required
-            className="w-full p-2 rounded bg-gray-700"
-          />
-          <input
-            type="password"
-            name="password"
-            placeholder="Password"
-            value={form.password}
-            onChange={handleChange}
-            required
-            className="w-full p-2 rounded bg-gray-700"
-          />
-          <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 py-2 rounded">
-            Login
-          </button>
-        </form>
-        {status && <p className="mt-4 text-center text-sm text-red-400">{status}</p>}
-      </div>
+    <div className="flex items-center justify-center min-h-screen bg-gray-900 text-white">
+      <form onSubmit={handleSubmit} className="bg-gray-800 p-6 rounded w-full max-w-sm">
+        <h2 className="text-xl font-bold mb-4 text-center">Admin Login</h2>
+        {error && <p className="text-red-500 mb-3">{error}</p>}
+        <input
+          type="text"
+          placeholder="Username"
+          className="w-full p-2 mb-3 rounded bg-gray-700 text-white"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          required
+        />
+        <input
+          type="password"
+          placeholder="Password"
+          className="w-full p-2 mb-4 rounded bg-gray-700 text-white"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+        />
+        <button className="w-full bg-blue-600 p-2 rounded hover:bg-blue-700">Login</button>
+      </form>
     </div>
   );
 };
