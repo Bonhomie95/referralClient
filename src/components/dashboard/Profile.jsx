@@ -10,12 +10,11 @@ const Profile = () => {
     bankAccountNumber: '',
     bankAccountName: '',
   });
-  
+
   const [notification, setNotification] = useState('');
   const [loading, setLoading] = useState(false);
 
   const token = localStorage.getItem('token');
-
 
   const [banks, setBanks] = useState([]);
 
@@ -35,23 +34,22 @@ const Profile = () => {
       .catch((err) => console.error('Profile fetch error:', err));
   }, [token]);
 
-  
-useEffect(() => {
-  const fetchBanks = async () => {
-    try {
-      const response = await axios.get('https://api.paystack.co/bank', {
-        headers: {
-          Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}`,
-        },
-      });
-      setBanks(response.data.data); // Paystack returns array under `data`
-    } catch (err) {
-      console.error('Error fetching banks:', err);
-    }
-  };
+  useEffect(() => {
+    const fetchBanks = async () => {
+      try {
+        const response = await axios.get('https://api.paystack.co/bank', {
+          headers: {
+            Authorization: `Bearer ${import.meta.env.VITE_PAYSTACK_SECRET_KEY}`,
+          },
+        });
+        setBanks(response.data.data); // Paystack returns array under `data`
+      } catch (err) {
+        console.error('Error fetching banks:', err);
+      }
+    };
 
-  fetchBanks();
-}, []);
+    fetchBanks();
+  }, []);
   const handleBankDetailChange = (e) => {
     const { name, value } = e.target;
 
@@ -147,26 +145,22 @@ useEffect(() => {
         <div>
           <label className="font-medium">Bank Name</label>
           <select
-  name="bankName"
-  value={bankDetails.bankCode}
-  onChange={(e) => {
-    const selected = banks.find((b) => b.code === e.target.value);
-    setBankDetails((prev) => ({
-      ...prev,
-      bankName: selected.name,
-      bankCode: selected.code,
-    }));
-  }}
-  className="w-full p-2 bg-gray-700 rounded"
->
-  <option value="">Select Bank</option>
-  {banks.map((bank) => (
-    <option key={bank.code} value={bank.code}>
-      {bank.name}
-    </option>
-  ))}
-</select>
-
+            name="bankName"
+            value={bankDetails.bankCode}
+            onChange={(e) => {
+              const selected = banks.find((b) => b.code === e.target.value);
+              setBankDetails((prev) => ({
+                ...prev,
+                bankName: selected.name,
+                bankCode: selected.code,
+              }));
+            }}
+            className="w-full p-2 bg-gray-700 rounded"
+          >
+            <option value="">Select Bank</option>
+            {banks.filter((bank, index, self) => self.indexOf(bank) === index).map((bank, index) => (
+              <option key={`${bank}-${index}`} value={bank.code}>{bank.name}</option>))}
+          </select>
         </div>
         <div>
           <label className="font-medium">Account Number</label>

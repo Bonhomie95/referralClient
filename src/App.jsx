@@ -33,7 +33,7 @@ import AdminUsers from './components/admin/AdminUsers';
 import AdminSettings from './components/admin/AdminSettings';
 import AdminProtectedRoute from './components/admin/AdminRoute';
 import Analytics from './components/admin/Analytics';
-// import UserRoute from './components/dashboard/UserRoute';
+import UserRoute from './components/dashboard/UserRoute';
 
 function AppWrapper() {
   const [modal, setModal] = useState(null); // possible values: 'register', 'verify', 'login', 'forgot', 'confirmPlan'
@@ -116,26 +116,19 @@ function AppWrapper() {
       <Routes>
         <Route path="/" element={<LandingPage openModal={openModal} />} />
 
-        <Route
-          path="/dashboard"
-          element={
-            isLoggedIn ? (
-              <DashboardLayout onLogout={handleLogout} />
-            ) : (
-              <Navigate to="/" />
-            )
-          }
-        >
-          <Route
-            path="home"
-            element={<DashboardHome onPlanSelect={handlePlanSelect} />}
-          />
-          <Route path="profile" element={<Profile />} />
-          <Route path="settings" element={<Settings />} />
-          <Route path="investments" element={<Investments />} />
-          <Route path="payment" element={<PaymentPage />} />
-          <Route path="withdraw" element={<WithdrawPage />} />
-          <Route path="referrals" element={<ReferralReport />} />
+        <Route path="/dashboard" element={<UserRoute />}>
+          <Route element={<DashboardLayout />} onLogout={handleLogout}>
+            <Route
+              path="home"
+              element={<DashboardHome onPlanSelect={handlePlanSelect} />}
+            />
+            <Route path="profile" element={<Profile />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="investments" element={<Investments />} />
+            <Route path="payment" element={<PaymentPage />} />
+            <Route path="withdraw" element={<WithdrawPage />} />
+            <Route path="referrals" element={<ReferralReport />} />
+          </Route>
         </Route>
 
         {/* 👇 Add this route at the root level */}
