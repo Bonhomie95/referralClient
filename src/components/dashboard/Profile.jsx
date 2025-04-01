@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-// import nigerianBanks from '../../constants/nigerianBanks';
+import { z } from 'zod';
 import axios from 'axios';
 
 const Profile = () => {
@@ -10,12 +10,10 @@ const Profile = () => {
     bankAccountNumber: '',
     bankAccountName: '',
   });
-
   const [notification, setNotification] = useState('');
   const [loading, setLoading] = useState(false);
 
   const token = localStorage.getItem('token');
-
   const [banks, setBanks] = useState([]);
 
   useEffect(() => {
@@ -59,7 +57,18 @@ const Profile = () => {
     setBankDetails((prev) => ({ ...prev, [name]: value }));
   };
 
+  const bankSchema = z.object({
+    bankName: z.string().min(2, 'Bank name is required'),
+    bankCode: z.string().min(1, 'Select a valid bank'),
+    bankAccountNumber: z.string().length(10, 'Must be 10 digits'),
+  });
+
   const updateBankDetails = async () => {
+    const result = bankSchema.safeParse(bankDetails);
+    if (!result.success) {
+      setNotification(result.error.errors[0].message);
+      return;
+    }
     // Validation
     if (!/^\d{10}$/.test(bankDetails.bankAccountNumber)) {
       setNotification('Account number must be exactly 10 digits.');
@@ -158,8 +167,13 @@ const Profile = () => {
             className="w-full p-2 bg-gray-700 rounded"
           >
             <option value="">Select Bank</option>
-            {banks.filter((bank, index, self) => self.indexOf(bank) === index).map((bank, index) => (
-              <option key={`${bank}-${index}`} value={bank.code}>{bank.name}</option>))}
+            {banks
+              .filter((bank, index, self) => self.indexOf(bank) === index)
+              .map((bank, index) => (
+                <option key={`${bank}-${index}`} value={bank.code}>
+                  {bank.name}
+                </option>
+              ))}
           </select>
         </div>
         <div>

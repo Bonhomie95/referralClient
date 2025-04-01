@@ -20,6 +20,7 @@ const sidebarItems = [
   },
   { name: 'Profile', icon: <FaUser />, route: '/dashboard/profile' },
   { name: 'Settings', icon: <FaCog />, route: '/dashboard/settings' },
+  { name: 'Referral History', icon: <FaCog />, route: '/dashboard/referral-history' },
 ];
 
 const UserSidebar = ({ onLogout }) => {
@@ -76,7 +77,7 @@ const UserSidebar = ({ onLogout }) => {
           </Link>
         ))}
       </nav>
-      {/* Logout Button at Bottom */}
+     
       <div className="mt-auto">
         <button
           onClick={onLogout}

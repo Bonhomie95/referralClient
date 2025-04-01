@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import QRCode from 'react-qr-code';
 import axios from 'axios';
 
 const Investments = () => {
   const [investments, setInvestments] = useState([]);
+  const [countdown, setCountdown] = useState('');
   const [filterMode, setFilterMode] = useState('active'); // "active", "inactive", "all"
   const [selectedInvestment, setSelectedInvestment] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -26,6 +28,31 @@ const Investments = () => {
         setLoading(false);
       });
   }, [token]);
+
+  useEffect(() => {
+    if (!selectedInvestment) return;
+
+    const interval = setInterval(() => {
+      const now = new Date();
+      const expiry = new Date(selectedInvestment.expiryDate);
+      const diff = expiry - now;
+
+      if (diff <= 0) {
+        setCountdown('Expired');
+        clearInterval(interval);
+        return;
+      }
+
+      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const minutes = Math.floor((diff / (1000 * 60)) % 60);
+      const seconds = Math.floor((diff / 1000) % 60);
+
+      setCountdown(`${days}d ${hours}h ${minutes}m ${seconds}s`);
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [selectedInvestment]);
 
   // Filter investments based on filterMode
   const filteredInvestments =
@@ -74,6 +101,32 @@ const Investments = () => {
               className="w-full p-2 bg-gray-700 rounded"
             />
           </div>
+          {selectedInvestment.parentInvestmentId && (
+            <div className="mt-4 p-4 bg-gray-700 rounded">
+              <h3 className="font-semibold mb-2 text-center text-sm text-gray-300">
+                Referral Chain
+              </h3>
+              <p className="text-sm text-center text-gray-200">
+                This investment was referred by another investment.
+              </p>
+              <p className="text-xs text-center text-gray-400">
+                Referred From: {selectedInvestment.parentInvestmentId}
+              </p>
+            </div>
+          )}
+          {selectedInvestment.referredUsers?.length > 0 && (
+            <div className="mt-4 p-4 bg-gray-700 rounded">
+              <h3 className="font-semibold mb-2 text-center text-sm text-gray-300">
+                Your Referred Users
+              </h3>
+              <ul className="text-xs text-gray-300 list-disc list-inside">
+                {selectedInvestment.referredUsers.map((userId) => (
+                  <li key={userId}>{userId}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
           <div>
             <label className="font-medium">Start Date</label>
             <input
@@ -97,6 +150,27 @@ const Investments = () => {
             />
           </div>
           <div>
+            <label className="font-medium">Time Until Expiry</label>
+            <input
+              type="text"
+              value={countdown}
+              readOnly
+              className="w-full p-2 bg-gray-700 rounded"
+            />
+          </div>
+          <div>
+            <label className="font-medium">Next Payout Due</label>
+            <input
+              type="text"
+              value={new Date(
+                selectedInvestment.nextInterestPaymentDate
+              ).toLocaleString()}
+              readOnly
+              className="w-full p-2 bg-gray-700 rounded"
+            />
+          </div>
+
+          <div>
             <label className="font-medium">Total Interest Accrued</label>
             <input
               type="text"
@@ -114,6 +188,36 @@ const Investments = () => {
               className="w-full p-2 bg-gray-700 rounded"
             />
           </div>
+          <div>
+            <label className="font-medium">Paid Referrals</label>
+            <input
+              type="text"
+              readOnly
+              value={selectedInvestment.paidInvitees}
+              className="w-full p-2 bg-gray-700 rounded"
+            />
+          </div>
+          <div>
+            <label className="font-medium">Referral Count</label>
+            <input
+              type="text"
+              readOnly
+              value={selectedInvestment.referralCount}
+              className="w-full p-2 bg-gray-700 rounded"
+            />
+          </div>
+          {selectedInvestment.referredFromInvestment && (
+            <div>
+              <label className="font-medium">Referred From</label>
+              <input
+                type="text"
+                readOnly
+                value={`Investment ₦${selectedInvestment.referredFromInvestment.planAmount} — Ref: ${selectedInvestment.referredFromInvestment.referralLink}`}
+                className="w-full p-2 bg-gray-700 rounded"
+              />
+            </div>
+          )}
+
           <div>
             <label className="font-medium">Total Invitees</label>
             <input
@@ -140,8 +244,35 @@ const Investments = () => {
               value={`${import.meta.env.VITE_APP_URL}/register?ref=${
                 selectedInvestment.referralLink
               }`}
-              className="w-full p-2 bg-gray-700 rounded"
+              className="w-full p-2 bg-gray-700 rounded mb-2"
             />
+            <button
+              onClick={() =>
+                navigator.clipboard.writeText(
+                  `${import.meta.env.VITE_APP_URL}/register?ref=${
+                    selectedInvestment.referralLink
+                  }`
+                )
+              }
+              className="text-sm text-blue-400 mt-2 hover:underline"
+            >
+              Copy Referral Link
+            </button>
+
+            <div className="flex flex-col items-center space-y-2">
+              <div className="bg-white p-2 rounded">
+                <QRCode
+                  value={`${import.meta.env.VITE_APP_URL}/register?ref=${
+                    selectedInvestment.referralLink
+                  }`}
+                  size={128}
+                />
+              </div>
+
+              <p className="text-xs text-gray-400">
+                Scan or share this QR to invite
+              </p>
+            </div>
           </div>
           {(() => {
             const start = new Date(selectedInvestment.planStartDate);
@@ -150,7 +281,7 @@ const Investments = () => {
               (today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)
             );
 
-            if (daysElapsed >= 8) {
+            if (daysElapsed >= 4) {
               const remaining = Math.max(
                 (selectedInvestment.withdrawalReferralTarget || 0) -
                   (selectedInvestment.referralCount || 0),
@@ -240,12 +371,8 @@ const Investments = () => {
                 <td className="py-2 px-4 border-b">
                   {new Date(inv.expiryDate).toLocaleDateString()}
                 </td>
-                <td className="py-2 px-4 border-b">
-                  {inv.interestAccrued}
-                </td>
-                <td className="py-2 px-4 border-b">
-                  {inv.commissionAccrued}
-                </td>
+                <td className="py-2 px-4 border-b">{inv.interestAccrued}</td>
+                <td className="py-2 px-4 border-b">{inv.commissionAccrued}</td>
                 <td className="py-2 px-4 border-b">{inv.paidInvitees}</td>
                 <td className="py-2 px-4 border-b">
                   <button

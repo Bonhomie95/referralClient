@@ -6,6 +6,8 @@ const PaymentPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const plan = location.state?.plan || null;
+  const referralLink = new URLSearchParams(location.search).get('ref'); // 👈 Get referral
+  const [allowedPlans, setAllowedPlans] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -13,11 +15,40 @@ const PaymentPage = () => {
     if (!plan) {
       navigate('/dashboard/home');
     }
-  }, [plan, navigate]);
+
+    const fetchAllowedPlans = async () => {
+      try {
+        if (referralLink) {
+          const res = await axios.get(
+            `${
+              import.meta.env.VITE_API_URL
+            }/api/investments/referral-plan/${referralLink}`
+          );
+          setAllowedPlans(res.data.allowedPlans);
+        } else {
+          setAllowedPlans([5000, 10000, 20000, 35000, 50000, 75000, 100000]);
+
+        }
+      } catch (error) {
+        console.error('Failed to fetch allowed plans:', error.message);
+        setAllowedPlans([5000, 10000, 20000, 35000, 50000, 75000, 100000]);
+
+      }
+    };
+
+    fetchAllowedPlans();
+  }, [plan, referralLink, navigate]);
 
   const handlePayNow = async () => {
+    if (!allowedPlans.includes(plan.price)) {
+      return setError(
+        `Plan of ₦${plan.price} is not allowed under this referral.`
+      );
+    }
+
     setLoading(true);
     setError('');
+
     try {
       const token = localStorage.getItem('token');
       const email = localStorage.getItem('userEmail');
@@ -31,6 +62,7 @@ const PaymentPage = () => {
           email,
           amount,
           callback_url: `${window.location.origin}/payment/callback`,
+          ...(referralLink && { referralLink }), // 👈 pass referralLink to backend
         },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -53,7 +85,7 @@ const PaymentPage = () => {
             <strong>Plan:</strong> {plan?.name}
           </p>
           <p>
-            <strong>Amount to Pay:</strong> {plan?.price} NGN
+            <strong>Amount to Pay:</strong> ₦{plan?.price}
           </p>
         </div>
         <button

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 import axios from 'axios';
+import { z } from 'zod';
 
 const LoginModal = ({ onClose, onLoginSuccess, openRegister, openForgot }) => {
   const [form, setForm] = useState({ email: '', password: '' });
@@ -13,10 +14,21 @@ const LoginModal = ({ onClose, onLoginSuccess, openRegister, openForgot }) => {
   const handleChange = (e) =>
     setForm({ ...form, [e.target.name]: e.target.value });
 
+  const loginSchema = z.object({
+    email: z.string().email('Invalid email'),
+    password: z.string().min(6, 'Password must be at least 6 characters'),
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const result = loginSchema.safeParse(form);
+    if (!result.success) {
+      setStatus(result.error.errors[0].message);
+      return;
+    }
     setStatus('');
+
     try {
       const res = await axios.post(
         `${import.meta.env.VITE_API_URL}/api/auth/login`,

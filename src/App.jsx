@@ -1,3 +1,5 @@
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import { useEffect, useState } from 'react';
 import {
   BrowserRouter,
@@ -26,17 +28,30 @@ import ConfirmationModal from './components/ConfirmationModal';
 import PaymentCallback from './components/dashboard/PaymentCallback';
 import PaymentStatus from './components/dashboard/PaymentStatus';
 import WithdrawalStatus from './components/dashboard/WithdrawalStatus';
+import UserRoute from './components/dashboard/UserRoute';
+import ReferralBonusHistory from './components/dashboard/ReferralBonusHistory';
 import AdminLayout from './components/admin/AdminLayout';
 import AdminLogin from './components/admin/AdminLogin';
 import AdminHome from './components/admin/AdminHome';
 import AdminUsers from './components/admin/AdminUsers';
 import AdminSettings from './components/admin/AdminSettings';
 import AdminProtectedRoute from './components/admin/AdminRoute';
+import AdminReferralTree from './components/admin/AdminReferralTree';
 import Analytics from './components/admin/Analytics';
-import UserRoute from './components/dashboard/UserRoute';
+import AdminReferralBonuses from './components/admin/AdminReferralBonuses';
 
 function AppWrapper() {
   const [modal, setModal] = useState(null); // possible values: 'register', 'verify', 'login', 'forgot', 'confirmPlan'
+  useEffect(() => {
+    const queryParams = new URLSearchParams(window.location.search);
+    const referralCode = queryParams.get('ref');
+
+    // Save to localStorage only if not already set
+    if (referralCode && !localStorage.getItem('referralCode')) {
+      localStorage.setItem('referralCode', referralCode);
+    }
+  }, []);
+
   const [registeredEmail, setRegisteredEmail] = useState(null);
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(
@@ -81,6 +96,7 @@ function AppWrapper() {
   const handleLogout = () => {
     setIsLoggedIn(false);
     localStorage.removeItem('token');
+    localStorage.removeItem('referralCode');
     navigate('/');
   };
 
@@ -117,7 +133,7 @@ function AppWrapper() {
         <Route path="/" element={<LandingPage openModal={openModal} />} />
 
         <Route path="/dashboard" element={<UserRoute />}>
-          <Route element={<DashboardLayout />} onLogout={handleLogout}>
+          <Route element={<DashboardLayout onLogout={handleLogout} />}>
             <Route
               path="home"
               element={<DashboardHome onPlanSelect={handlePlanSelect} />}
@@ -128,6 +144,7 @@ function AppWrapper() {
             <Route path="payment" element={<PaymentPage />} />
             <Route path="withdraw" element={<WithdrawPage />} />
             <Route path="referrals" element={<ReferralReport />} />
+            <Route path="referral-history" element={<ReferralBonusHistory />} />
           </Route>
         </Route>
 
@@ -145,6 +162,11 @@ function AppWrapper() {
             <Route path="users" element={<AdminUsers />} />
             <Route path="settings" element={<AdminSettings />} />
             <Route path="analytics" element={<Analytics />} />
+            <Route
+              path="referral-tree/:userId"
+              element={<AdminReferralTree />}
+            />
+            <Route path="referral-bonuses" element={<AdminReferralBonuses />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/" />} />
@@ -198,6 +220,7 @@ function App() {
   return (
     <BrowserRouter>
       <AppWrapper />
+      <ToastContainer position="top-right" autoClose={3000} />
     </BrowserRouter>
   );
 }

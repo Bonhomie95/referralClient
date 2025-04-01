@@ -1,5 +1,6 @@
 import PropTypes from 'prop-types';
 import { useState } from 'react';
+import { z } from 'zod';
 
 function ForgotPasswordModal({ onClose, openLogin }) {
   const [email, setEmail] = useState('');
@@ -12,9 +13,20 @@ function ForgotPasswordModal({ onClose, openLogin }) {
     setTimeout(() => modalFunc(), 300);
   };
 
+  const forgotSchema = z.object({
+    email: z.string().email('Invalid email'),
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
+    const result = forgotSchema.safeParse({ email });
+    if (!result.success) {
+      setStatus(result.error.errors[0].message);
+      setIsError(true);
+      return;
+    }
+    setIsError(false);
     setStatus('');
     try {
       const res = await fetch(

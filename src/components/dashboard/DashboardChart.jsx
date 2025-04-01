@@ -14,17 +14,42 @@ Chart.register(BarElement, CategoryScale, LinearScale, Title, Tooltip, Legend);
 
 const DashboardChart = ({ data }) => {
   const chartData = {
-    labels: ['Interest', 'Commission'],
+    labels: [
+      'Interest',
+      'Commission',
+      'Direct Referrals',
+      'Indirect Referrals',
+    ],
     datasets: [
       {
         label: 'Accrued',
-        data: [data.interestAccrued, data.commissionAccrued],
-        backgroundColor: ['rgba(54, 162, 235, 0.7)', 'rgba(255, 206, 86, 0.7)'],
+        data: [
+          data.interestAccrued,
+          data.commissionAccrued,
+          data.totalDirectReferrals || 0,
+          data.totalIndirectReferrals || 0,
+        ],
+        backgroundColor: [
+          'rgba(54, 162, 235, 0.7)',
+          'rgba(255, 206, 86, 0.7)',
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(153, 102, 255, 0.7)',
+        ],
       },
       {
         label: 'Withdrawn',
-        data: [data.interestWithdrawn, data.commissionWithdrawn],
-        backgroundColor: ['rgba(75, 192, 192, 0.7)', 'rgba(255, 99, 132, 0.7)'],
+        data: [
+          data.interestWithdrawn,
+          data.commissionWithdrawn,
+          0, // Withdrawn doesn't apply to referrals
+          0,
+        ],
+        backgroundColor: [
+          'rgba(75, 192, 192, 0.7)',
+          'rgba(255, 99, 132, 0.7)',
+          'rgba(200, 200, 200, 0.3)',
+          'rgba(200, 200, 200, 0.3)',
+        ],
       },
     ],
   };
@@ -37,7 +62,7 @@ const DashboardChart = ({ data }) => {
       },
       title: {
         display: true,
-        text: 'Investment Performance',
+        text: 'Investment & Referral Performance',
       },
     },
   };
@@ -46,7 +71,7 @@ const DashboardChart = ({ data }) => {
 };
 
 DashboardChart.propTypes = {
-  data: PropTypes.func.isRequired,
+  data: PropTypes.object.isRequired, // Fixed this from `func` to `object`
 };
 
 export default DashboardChart;

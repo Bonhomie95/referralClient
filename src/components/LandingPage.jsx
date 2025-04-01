@@ -5,10 +5,21 @@ import AboutUs from './AboutUs';
 import Reviews from './Reviews';
 import InvestmentPlans from './InvestmentPlans';
 import ContactUs from './ContactUs';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { useEffect } from 'react';
+
 
 function LandingPage({ openModal }) {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const queryRef = new URLSearchParams(location.search).get('ref');
+    if (queryRef) {
+      localStorage.setItem('referralUsed', queryRef);
+      openModal('register', { referralCode: queryRef }); // ✅ open registration modal
+    }
+  }, [location.search, openModal]);
 
   // Handler for "Start Investing" button click
   const handleStartInvesting = () => {

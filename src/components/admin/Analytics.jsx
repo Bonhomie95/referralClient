@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 import axios from 'axios';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  LineChart, Line, Legend, PieChart, Pie, Cell
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell
 } from 'recharts';
 
 const Analytics = () => {
@@ -26,6 +25,8 @@ const Analytics = () => {
     { name: 'Users', value: stats.totalUsers },
     { name: 'Investments', value: stats.totalInvestments },
     { name: 'Withdrawals', value: stats.totalWithdrawals },
+    { name: 'Referral Bonuses', value: stats.totalReferralBonuses || 0 },
+
   ];
 
   const barData = [

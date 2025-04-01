@@ -18,14 +18,19 @@ const AdminSidebar = () => {
     { label: 'Home', path: '/admin/home', icon: <LayoutDashboard size={20} /> },
     { label: 'Users', path: '/admin/users', icon: <Users size={20} /> },
     {
-      label: 'Settings',
-      path: '/admin/settings',
-      icon: <Settings size={20} />,
-    },
-    {
       label: 'Analytics',
       path: '/admin/analytics',
       icon: <BarChart3 size={20} />,
+    },
+    {
+      label: 'Referral Bonuses',
+      path: '/admin/referral-bonuses',
+      icon: <Users size={20} />,
+    },
+    {
+      label: 'Settings',
+      path: '/admin/settings',
+      icon: <Settings size={20} />,
     },
   ];
 

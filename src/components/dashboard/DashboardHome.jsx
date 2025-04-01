@@ -2,9 +2,12 @@ import { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 import PropTypes from 'prop-types';
 import DashboardPlans from './DashboardPlans';
-import axios from 'axios';
-import NotificationBell from '../NotificationBell';
 import DashboardChart from './DashboardChart';
+import Notifications from './Notifications'; // New Notification component
+import axios from 'axios';
+import { toast } from 'react-toastify';
+
+
 
 const DashboardHome = ({ onPlanSelect }) => {
   const [activeInvestments, setActiveInvestments] = useState(0);
@@ -15,6 +18,7 @@ const DashboardHome = ({ onPlanSelect }) => {
     commissionAccrued: 0,
     commissionWithdrawn: 0,
   });
+
   const token = localStorage.getItem('token');
 
   useEffect(() => {
@@ -43,7 +47,7 @@ const DashboardHome = ({ onPlanSelect }) => {
 
     socket.on('withdrawal-status', (data) => {
       if (data.userId === userId) {
-        alert(`Withdrawal ${data.status}: ₦${data.amount}`);
+        toast.info(`Withdrawal ${data.status}: ₦${data.amount}`);
       }
     });
 
@@ -57,7 +61,7 @@ const DashboardHome = ({ onPlanSelect }) => {
           {activeInvestments} active investment
           {activeInvestments !== 1 ? 's' : ''} of {totalInvestments} total
         </h1>
-        <NotificationBell />
+        <Notifications />
       </header>
 
       <section className="hidden md:block mb-4 md:mb-6">

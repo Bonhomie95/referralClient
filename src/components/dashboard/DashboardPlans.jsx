@@ -8,29 +8,32 @@ import { motion } from 'framer-motion';
 const DashboardPlans = ({ onPlanSelect }) => {
   const [allowedPlans, setAllowedPlans] = useState([]);
   const location = useLocation();
-  const referralLink = new URLSearchParams(location.search).get('ref');
+  const referralCode =
+  new URLSearchParams(location.search).get('ref') ||
+  localStorage.getItem('referralCode');
+
 
   useEffect(() => {
     const fetchAllowedPlans = async () => {
       try {
-        if (referralLink) {
+        if (referralCode) {
           const res = await axios.get(
             `${
               import.meta.env.VITE_API_URL
-            }/api/investments/referral-plan/${referralLink}`
+            }/api/investments/referral-plan/${referralCode}`
           );
           setAllowedPlans(res.data.allowedPlans);
         } else {
-          setAllowedPlans([5000, 10000, 20000, 50000, 100000]);
+          setAllowedPlans([5000, 10000, 20000, 35000, 50000, 75000, 100000]);
         }
       } catch (error) {
         console.error('Failed to fetch referral plan:', error.message);
-        setAllowedPlans([5000, 10000, 20000, 50000, 100000]);
+        setAllowedPlans([5000, 10000, 20000, 35000, 50000, 75000, 100000]);
       }
     };
 
     fetchAllowedPlans();
-  }, [referralLink]);
+  }, [referralCode]);
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">

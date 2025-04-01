@@ -1,6 +1,7 @@
 import PropTypes from 'prop-types';
 import { useState, useRef } from 'react';
 import axios from 'axios';
+import { z } from 'zod';
 
 function VerificationModal({ onClose, onVerified, email }) {
   const [code, setCode] = useState('');
@@ -11,9 +12,19 @@ function VerificationModal({ onClose, onVerified, email }) {
 
   const inputRef = useRef(null);
 
+  const verifySchema = z.object({
+    code: z.string().length(6, 'Code must be 6 digits'),
+  });
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setVerifying(true);
+    const result = verifySchema.safeParse({ code });
+    if (!result.success) {
+      setStatus(result.error.errors[0].message);
+      setIsError(true);
+      return;
+    }
     setStatus('');
     setIsError(false);
 
@@ -52,7 +63,9 @@ function VerificationModal({ onClose, onVerified, email }) {
       setStatus(res.data.message);
     } catch (error) {
       const errMsg =
-        error.response?.data?.message || error.message || 'Failed to resend code';
+        error.response?.data?.message ||
+        error.message ||
+        'Failed to resend code';
       setStatus(errMsg);
       setIsError(true);
     } finally {
@@ -69,7 +82,8 @@ function VerificationModal({ onClose, onVerified, email }) {
       <div className="bg-gray-800 text-white p-8 rounded shadow-lg z-10 transform transition duration-300 ease-in-out w-full max-w-md">
         <h2 className="text-2xl mb-4">Verify Your Email</h2>
         <p className="mb-4">
-          A verification code has been sent to <strong>{email}</strong>. Please enter it below.
+          A verification code has been sent to <strong>{email}</strong>. Please
+          enter it below.
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
           <input
@@ -93,7 +107,7 @@ function VerificationModal({ onClose, onVerified, email }) {
         <button
           onClick={handleResend}
           disabled={resending}
-          className="mt-3 text-sm text-blue-400 hover:underline disabled:opacity-50"
+          className="mt-3 text-sm text-blue-400 hover:underline disabled:opacity-50 mr-4"
         >
           {resending ? 'Resending...' : 'Resend Code'}
         </button>

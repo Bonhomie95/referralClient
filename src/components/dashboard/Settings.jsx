@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { z } from 'zod';
 import ConfirmationModal from '../ConfirmationModal';
 
 const Settings = () => {
@@ -24,6 +25,16 @@ const Settings = () => {
 
   const token = localStorage.getItem('token');
 
+  const passwordSchema = z
+    .object({
+      newPassword: z.string().min(6, 'Password must be at least 6 characters'),
+      confirmPassword: z.string(),
+    })
+    .refine((data) => data.newPassword === data.confirmPassword, {
+      message: 'Passwords do not match',
+      path: ['confirmPassword'],
+    });
+
   useEffect(() => {
     axios
       .get(`${import.meta.env.VITE_API_URL}/api/user/profile`, {
@@ -35,6 +46,27 @@ const Settings = () => {
       })
       .catch((err) => console.error('Error fetching profile:', err));
   }, [token]);
+
+  const toggleReferralEmailNotifications = async () => {
+    try {
+      const res = await axios.post(
+        `${import.meta.env.VITE_API_URL}/api/user/toggle-referral-emails`,
+        {},
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setProfile((prev) => ({
+        ...prev,
+        receiveReferralEmails: res.data.receiveReferralEmails,
+      }));
+      setNotification(res.data.message);
+      autoClearNotification();
+    } catch (err) {
+      setNotification(
+        err.response?.data?.message || 'Failed to toggle email setting.'
+      );
+      autoClearNotification();
+    }
+  };
 
   const handleToggle2FA = (desiredState) => {
     setOtpInput('');
@@ -119,6 +151,12 @@ const Settings = () => {
     e.preventDefault();
     const { newPassword, confirmPassword, code } = passwordData;
 
+    const result = passwordSchema.safeParse(passwordData);
+    if (!result.success) {
+      setNotification(result.error.errors[0].message);
+      return autoClearNotification();
+    }
+
     if (newPassword !== confirmPassword) {
       setNotification('Passwords do not match.');
       return autoClearNotification();
@@ -128,7 +166,6 @@ const Settings = () => {
       setNotification('Verification code is required.');
       return autoClearNotification();
     }
-
     setIsLoading(true);
 
     try {
@@ -214,7 +251,9 @@ const Settings = () => {
   };
 
   if (!profile) return <p className="text-white p-8">Loading Settings...</p>;
-
+  {
+    twoFactorEnabled && null;
+  }
   return (
     <div className="max-w-2xl mx-auto p-6 bg-gray-800 rounded-lg shadow-md text-white">
       <h2 className="text-2xl font-bold mb-4">Settings</h2>
@@ -231,8 +270,31 @@ const Settings = () => {
           className="mt-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded disabled:opacity-50"
           disabled={isLoading}
         >
-          {twoFAEnabled ? 'Disable 2FA' : 'Enable 2FA'}
+          {isLoading
+            ? 'Processing...'
+            : twoFAEnabled
+            ? 'Disable 2FA'
+            : 'Enable 2FA'}
         </button>
+
+        <div className="mb-6">
+          <h3 className="text-xl font-semibold mb-2">
+            Referral Bonus Email Notifications
+          </h3>
+          <p className="flex items-center gap-2">
+            Status:{' '}
+            {profile?.receiveReferralEmails ? 'Enabled ✅' : 'Disabled 🔕'}
+          </p>
+          <button
+            onClick={toggleReferralEmailNotifications}
+            className="mt-2 bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded disabled:opacity-50"
+          >
+            {profile?.receiveReferralEmails
+              ? 'Disable Referral Emails'
+              : 'Enable Referral Emails'}
+          </button>
+        </div>
+
         {otpSent && (
           <div className="mt-2 flex space-x-2">
             <input
@@ -247,7 +309,7 @@ const Settings = () => {
               className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded disabled:opacity-50"
               disabled={isLoading}
             >
-              {isLoading ? 'Processing...' : 'Confirm'}
+              {isLoading ? 'Verifying...' : 'Confirm'}
             </button>
           </div>
         )}
@@ -298,7 +360,7 @@ const Settings = () => {
                 disabled={isLoading}
               >
                 {isLoading
-                  ? 'Sending Verification Code to Email...'
+                  ? 'Sending Code to Email...'
                   : 'Send Verification Code to Email'}
               </button>
             )}
@@ -334,7 +396,7 @@ const Settings = () => {
                 />
                 <button
                   type="submit"
-                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded"
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-2 rounded disabled:opacity-50"
                   disabled={isLoading}
                 >
                   {isLoading ? 'Updating...' : 'Update Password'}
@@ -352,7 +414,7 @@ const Settings = () => {
           className="w-full bg-red-600 hover:bg-red-700 text-white py-2 rounded disabled:opacity-50"
           disabled={isLoading}
         >
-          Delete Profile
+          {isLoading ? 'Please wait...' : 'Delete Profile'}
         </button>
       </div>
 
@@ -382,9 +444,10 @@ const Settings = () => {
               />
               <button
                 onClick={handleDeleteProfile}
-                className="bg-red-600 text-white w-full py-2 rounded"
+                disabled={isLoading}
+                className="bg-red-600 text-white w-full py-2 rounded disabled:opacity-50"
               >
-                Confirm Deletion
+                {isLoading ? 'Deleting...' : 'Confirm Deletion'}
               </button>
             </div>
           )}

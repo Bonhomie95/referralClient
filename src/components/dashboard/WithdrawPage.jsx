@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useNavigate, useLocation } from 'react-router-dom';
-
+import { z } from 'zod';
 const WithdrawPage = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -14,6 +14,14 @@ const WithdrawPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const investment = location.state?.investment;
+
+  const withdrawSchema = z.object({
+    interest: z.string().regex(/^\d+$/, 'Interest must be numeric').optional(),
+    commission: z
+      .string()
+      .regex(/^\d+$/, 'Commission must be numeric')
+      .optional(),
+  });
 
   useEffect(() => {
     const token = localStorage.getItem('token');
@@ -43,8 +51,15 @@ const WithdrawPage = () => {
   };
 
   const handleWithdraw = async (amount, withdrawalType) => {
+    const parsed = withdrawSchema.safeParse(withdrawInputs);
+    if (!parsed.success) {
+      setNotification(parsed.error.errors[0].message);
+      return;
+    }
+
     if (!userProfile) return;
-    const { bankName, bankAccountNumber, bankAccountName, bankCode } = userProfile;
+    const { bankName, bankAccountNumber, bankAccountName, bankCode } =
+      userProfile;
 
     const now = new Date();
     const start = new Date(investment.planStartDate);
@@ -57,10 +72,10 @@ const WithdrawPage = () => {
     }
 
     if (withdrawalType === 'interest') {
-      if (daysElapsed >= 8 && daysElapsed < 15 && invitees < 5) {
+      if (daysElapsed >= 4 && daysElapsed < 14 && invitees < 5) {
         setNotification('You need at least 5 invitees to withdraw interest.');
         return;
-      } else if (daysElapsed >= 15 && invitees < 10) {
+      } else if (daysElapsed >= 14 && invitees < 10) {
         setNotification('You need at least 10 invitees to withdraw interest.');
         return;
       }
@@ -80,7 +95,12 @@ const WithdrawPage = () => {
         {
           amount,
           withdrawalType,
-          bankDetails: { bankName, bankAccountNumber, bankAccountName, bankCode },
+          bankDetails: {
+            bankName,
+            bankAccountNumber,
+            bankAccountName,
+            bankCode,
+          },
         },
         {
           headers: { Authorization: `Bearer ${localStorage.getItem('token')}` },
@@ -106,15 +126,15 @@ const WithdrawPage = () => {
   const invitees = investment.paidInvitees || 0;
 
   const neededInvites =
-    daysElapsed >= 15 ? 10 - invitees : daysElapsed >= 8 ? 5 - invitees : 0;
+    daysElapsed >= 14 ? 10 - invitees : daysElapsed >= 4 ? 5 - invitees : 0;
 
   const isInterestDisabled =
     loading ||
     !withdrawInputs.interest ||
     Number(withdrawInputs.interest) > interestBal ||
     Number(withdrawInputs.interest) < 2000 ||
-    (daysElapsed >= 8 && daysElapsed < 15 && invitees < 5) ||
-    (daysElapsed >= 15 && invitees < 10);
+    (daysElapsed >= 4 && daysElapsed < 14 && invitees < 5) ||
+    (daysElapsed >= 14 && invitees < 10);
 
   const isCommissionDisabled =
     loading ||
@@ -172,7 +192,7 @@ const WithdrawPage = () => {
           >
             Withdraw Interest
           </button>
-          {daysElapsed >= 8 && neededInvites > 0 && (
+          {daysElapsed >= 4 && neededInvites > 0 && (
             <p className="text-yellow-400 mt-2">
               {neededInvites} more invitee(s) needed to enable interest
               withdrawal.
@@ -182,7 +202,8 @@ const WithdrawPage = () => {
 
         <div>
           <label className="block mb-1">
-            Commission Balance (₦{commissionBal}) -{' Minimum withdrawal is ₦2000'}
+            Commission Balance (₦{commissionBal}) -
+            {' Minimum withdrawal is ₦2000'}
           </label>
           <input
             type="text"

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import PropTypes from 'prop-types';
+import { Link } from 'react-router-dom';
 
 const AdminUsers = () => {
   const [users, setUsers] = useState([]);
@@ -132,6 +133,14 @@ const AdminUsers = () => {
                 <td className="p-3">{user.fullname}</td>
                 <td className="p-3">{user.username}</td>
                 <td className="p-3">{user.email}</td>
+                <td>
+                  <Link
+                    to={`/admin/referral-tree/${user._id}`}
+                    className="text-blue-400 hover:underline"
+                  >
+                    View Tree
+                  </Link>
+                </td>
                 <td className="p-3 space-x-2">
                   <button
                     onClick={() => setModalUser(user)}
@@ -234,6 +243,7 @@ const AdminUsers = () => {
                 setEditingUser({ ...editingUser, email: e.target.value })
               }
             />
+
             <div className="flex justify-between gap-4">
               <button
                 onClick={handleEdit}
